@@ -24,6 +24,7 @@ interface Issue {
   localAddress?: string;
   location?: string;
   reporter?: string;
+  image_url?: string;
   statusUpdates?: Array<{
     message: string;
     date: string;
@@ -39,7 +40,7 @@ const TrackIssues = () => {
     const loadIssues = async () => {
       setLoading(true);
 
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from("issues")
         .select("*")
         .order("created_at", { ascending: false });
@@ -57,7 +58,7 @@ const TrackIssues = () => {
           item.description && item.description.length > 50
             ? item.description.slice(0, 50) + "..."
             : item.description || "Civic Issue",
-        category: item.category,
+        category: item.category || "General",
         status: item.status || "submitted",
         date: item.created_at
           ? new Date(item.created_at).toISOString().split("T")[0]
@@ -66,6 +67,7 @@ const TrackIssues = () => {
         localAddress: item.local_address,
         location: item.location,
         reporter: item.reporter_name,
+        image_url: item.image_url,
         statusUpdates: [
           {
             message: "Issue reported and logged in system",
@@ -93,7 +95,8 @@ const TrackIssues = () => {
     (issue) =>
       issue.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       issue.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      issue.category.toLowerCase().includes(searchTerm.toLowerCase())
+      issue.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      issue.description?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const getStatusColor = (status: string) => {
@@ -112,12 +115,8 @@ const TrackIssues = () => {
   };
 
   const getStatusText = (status: string) => {
-    switch (status) {
-      case "under process":
-        return "In Progress";
-      default:
-        return status.charAt(0).toUpperCase() + status.slice(1);
-    }
+    if (status === "under process") return "In Progress";
+    return status.charAt(0).toUpperCase() + status.slice(1);
   };
 
   const firstIssueId = filteredIssues.length > 0 ? filteredIssues[0].id : "";
@@ -137,7 +136,7 @@ const TrackIssues = () => {
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search by issue ID, title, or category..."
+                placeholder="Search by issue ID, title, category, or description..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
@@ -188,12 +187,21 @@ const TrackIssues = () => {
             filteredIssues.map((issue) => (
               <Card key={issue.id} className="shadow-card">
                 <CardContent className="p-6">
+                  {issue.image_url && (
+                    <img
+                      src={issue.image_url}
+                      alt="Issue"
+                      className="w-full h-56 object-cover rounded-lg mb-4 border"
+                    />
+                  )}
+
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
                         <h3 className="text-lg font-semibold text-foreground">
                           {issue.title}
                         </h3>
+
                         <Badge
                           className={`${getStatusColor(
                             issue.status
@@ -241,6 +249,21 @@ const TrackIssues = () => {
                       </div>
                     )}
                   </div>
+
+                  {issue.location && (
+                    <div className="mb-4">
+                      <a
+                        href={`https://www.google.com/maps?q=${encodeURIComponent(
+                          issue.location
+                        )}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-blue-600 text-sm underline"
+                      >
+                        View on Map
+                      </a>
+                    </div>
+                  )}
 
                   {issue.statusUpdates && issue.statusUpdates.length > 0 && (
                     <div>

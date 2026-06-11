@@ -7,10 +7,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import logo from "@/assets/jan-dristi-logo.png";
+import { supabase } from "@/integrations/supabase/client";
 
 const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -23,25 +25,77 @@ const Login = () => {
     e.preventDefault();
     setLoading(true);
 
-    const emailName = formData.email.split("@")[0];
-
-    localStorage.setItem("isLoggedIn", "true");
-
-    localStorage.setItem(
-      "currentUser",
-      JSON.stringify({
-        fullName: emailName,
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
         email: formData.email,
-      })
-    );
+        password: formData.password,
+      });
 
-    toast({
-      title: "Welcome back!",
-      description: "You have successfully signed in.",
-    });
+      console.log("Login data:", data);
+      console.log("Login error:", error);
 
-    setLoading(false);
-    navigate("/home");
+      if (error) {
+        toast({
+          title: "Login Failed",
+          description: error.message,
+          variant: "destructive",
+        });
+        setLoading(false);
+        return;
+      }
+
+      const user = data.user;
+
+      let fullName = formData.email.split("@")[0];
+      let mobileNumber = "";
+      let idType = "";
+      let idNumber = "";
+
+      if (user) {
+        const { data: profile } = await (supabase as any)
+          .from("profiles")
+          .select("*")
+          .eq("id", user.id)
+          .single();
+
+        if (profile) {
+          fullName = profile.full_name || fullName;
+          mobileNumber = profile.mobile_number || "";
+          idType = profile.id_type || "";
+          idNumber = profile.id_number || "";
+        }
+
+        localStorage.setItem("isLoggedIn", "true");
+
+        localStorage.setItem(
+          "currentUser",
+          JSON.stringify({
+            id: user.id,
+            fullName,
+            email: user.email,
+            mobileNumber,
+            idType,
+            idNumber,
+          })
+        );
+      }
+
+      toast({
+        title: "Welcome back!",
+        description: "You have successfully signed in.",
+      });
+
+      navigate("/home");
+    } catch (error) {
+      console.error("Login error:", error);
+      toast({
+        title: "Error",
+        description: "Something went wrong while signing in.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -63,9 +117,8 @@ const Login = () => {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email Address</Label>
+              <Label>Email Address</Label>
               <Input
-                id="email"
                 type="email"
                 placeholder="Enter your email..."
                 value={formData.email}
@@ -77,10 +130,9 @@ const Login = () => {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label>Password</Label>
               <div className="relative">
                 <Input
-                  id="password"
                   type={showPassword ? "text" : "password"}
                   placeholder="Enter your password..."
                   value={formData.password}

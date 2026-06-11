@@ -32,6 +32,8 @@ interface Issue {
   status: string;
   created_at: string;
   reporter_name?: string;
+  user_email?: string;
+  image_url?: string;
 }
 
 const Home = () => {
@@ -45,14 +47,46 @@ const Home = () => {
     const loadData = async () => {
       setLoading(true);
 
-      const currentUser = localStorage.getItem("currentUser");
-      if (currentUser) {
-        setProfile(JSON.parse(currentUser));
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+
+      if (userError || !user) {
+        localStorage.removeItem("isLoggedIn");
+        localStorage.removeItem("currentUser");
+        navigate("/login");
+        return;
       }
 
-      const { data, error } = await supabase
+      const { data: profileData } = await (supabase as any)
+        .from("profiles")
+        .select("*")
+        .eq("id", user.id)
+        .single();
+
+      const userProfile = {
+        id: user.id,
+        fullName:
+          profileData?.full_name ||
+          user.user_metadata?.fullName ||
+          user.email?.split("@")[0] ||
+          "User",
+        email: user.email || "",
+        mobileNumber: profileData?.mobile_number || "",
+        idType: profileData?.id_type || "",
+        idNumber: profileData?.id_number || "",
+      };
+
+      setProfile(userProfile);
+
+      localStorage.setItem("isLoggedIn", "true");
+      localStorage.setItem("currentUser", JSON.stringify(userProfile));
+
+      const { data, error } = await (supabase as any)
         .from("issues")
         .select("*")
+        .eq("user_email", user.email)
         .order("created_at", { ascending: false });
 
       if (error) {
@@ -62,16 +96,19 @@ const Home = () => {
         return;
       }
 
-      setIssues((data || []) as any);
+      setIssues((data || []) as Issue[]);
       setLoading(false);
     };
 
     loadData();
-  }, []);
+  }, [navigate]);
 
   const handleLogout = async () => {
+    await supabase.auth.signOut();
+
     localStorage.removeItem("isLoggedIn");
     localStorage.removeItem("currentUser");
+
     navigate("/login");
   };
 
@@ -124,6 +161,7 @@ const Home = () => {
                 className="w-full h-full object-cover rounded-lg"
               />
             </div>
+
             <h1 className="text-xl font-bold text-foreground">Jan Dristi</h1>
           </div>
 
@@ -226,6 +264,7 @@ const Home = () => {
                     <Filter className="h-4 w-4 mr-2" />
                     <SelectValue placeholder="category" />
                   </SelectTrigger>
+
                   <SelectContent>
                     <SelectItem value="all">All Categories</SelectItem>
                     <SelectItem value="infrastructure">
@@ -241,6 +280,7 @@ const Home = () => {
                     <Filter className="h-4 w-4 mr-2" />
                     <SelectValue placeholder="Status" />
                   </SelectTrigger>
+
                   <SelectContent>
                     <SelectItem value="all">All Status</SelectItem>
                     <SelectItem value="pending">Pending</SelectItem>
@@ -276,6 +316,7 @@ const Home = () => {
                       <h3 className="font-medium text-foreground">
                         {issue.description}
                       </h3>
+
                       <p className="text-sm text-muted-foreground">
                         {issue.category} •{" "}
                         {new Date(issue.created_at).toLocaleDateString()}

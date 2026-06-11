@@ -3,11 +3,18 @@ import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
 import { ArrowLeft, Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import logo from "@/assets/jan-dristi-logo.png";
+import { supabase } from "@/integrations/supabase/client";
 
 const SignUp = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -45,42 +52,105 @@ const SignUp = () => {
     setLoading(true);
 
     if (formData.password !== formData.confirmPassword) {
-      toast({ title: "Error", description: "Passwords do not match", variant: "destructive" });
+      toast({
+        title: "Error",
+        description: "Passwords do not match",
+        variant: "destructive",
+      });
       setLoading(false);
       return;
     }
 
     if (formData.password.length < 8) {
-      toast({ title: "Weak Password", description: "Password must be at least 8 characters long.", variant: "destructive" });
+      toast({
+        title: "Weak Password",
+        description: "Password must be at least 8 characters long.",
+        variant: "destructive",
+      });
       setLoading(false);
       return;
     }
 
     if (!validateIdNumber(formData.idType, formData.idNumber)) {
-      toast({ title: "Invalid ID Number", description: "Please enter valid ID details.", variant: "destructive" });
+      toast({
+        title: "Invalid ID Number",
+        description: "Please enter valid ID details.",
+        variant: "destructive",
+      });
       setLoading(false);
       return;
     }
 
-    localStorage.setItem("isLoggedIn", "true");
-    localStorage.setItem(
-      "currentUser",
-      JSON.stringify({
-        fullName: formData.fullName,
+    try {
+      const { data, error } = await supabase.auth.signUp({
         email: formData.email,
-        mobileNumber: formData.mobileNumber,
-        idType: formData.idType,
-        idNumber: formData.idNumber,
-      })
-    );
+        password: formData.password,
+        options: {
+          data: {
+            fullName: formData.fullName,
+            mobileNumber: formData.mobileNumber,
+            idType: formData.idType,
+            idNumber: formData.idNumber,
+          },
+        },
+      });
 
-    toast({
-      title: "Account Created Successfully",
-      description: "You are now signed in.",
-    });
+      console.log("Signup data:", data);
+      console.log("Signup error:", error);
 
-    setLoading(false);
-    navigate("/home");
+      if (error) {
+        toast({
+          title: "Signup Failed",
+          description: error.message,
+          variant: "destructive",
+        });
+        setLoading(false);
+        return;
+      }
+
+      const user = data.user;
+
+      if (user) {
+        await (supabase as any).from("profiles").upsert({
+          id: user.id,
+          full_name: formData.fullName,
+          email: formData.email,
+          mobile_number: formData.mobileNumber,
+          id_type: formData.idType,
+          id_number: formData.idNumber,
+        });
+
+        localStorage.setItem("isLoggedIn", "true");
+
+        localStorage.setItem(
+          "currentUser",
+          JSON.stringify({
+            id: user.id,
+            fullName: formData.fullName,
+            email: formData.email,
+            mobileNumber: formData.mobileNumber,
+            idType: formData.idType,
+            idNumber: formData.idNumber,
+          })
+        );
+      }
+
+      toast({
+        title: "Account Created Successfully",
+        description: "You are now signed in.",
+      });
+
+      navigate("/home");
+    } catch (error) {
+      console.error("Signup error:", error);
+      toast({
+        title: "Error",
+        description: "Something went wrong while creating your account.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const getPlaceholder = () => {
@@ -109,31 +179,64 @@ const SignUp = () => {
 
           <div className="text-center mb-8">
             <div className="w-20 h-20 mx-auto mb-4">
-              <img src={logo} alt="Jan Dristi" className="w-full h-full object-cover rounded-2xl" />
+              <img
+                src={logo}
+                alt="Jan Dristi"
+                className="w-full h-full object-cover rounded-2xl"
+              />
             </div>
             <h1 className="text-3xl font-bold text-foreground mb-2">join us</h1>
-            <p className="text-muted-foreground">Create your account to get started</p>
+            <p className="text-muted-foreground">
+              Create your account to get started
+            </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label>Full Name</Label>
-              <Input value={formData.fullName} onChange={(e) => setFormData({ ...formData, fullName: e.target.value })} required />
+              <Input
+                value={formData.fullName}
+                onChange={(e) =>
+                  setFormData({ ...formData, fullName: e.target.value })
+                }
+                required
+              />
             </div>
 
             <div className="space-y-2">
               <Label>Email Address</Label>
-              <Input type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} required />
+              <Input
+                type="email"
+                value={formData.email}
+                onChange={(e) =>
+                  setFormData({ ...formData, email: e.target.value })
+                }
+                required
+              />
             </div>
 
             <div className="space-y-2">
               <Label>Mobile Number</Label>
-              <Input value={formData.mobileNumber} onChange={(e) => setFormData({ ...formData, mobileNumber: e.target.value.replace(/\D/g, "").slice(0, 10) })} required />
+              <Input
+                value={formData.mobileNumber}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    mobileNumber: e.target.value.replace(/\D/g, "").slice(0, 10),
+                  })
+                }
+                required
+              />
             </div>
 
             <div className="space-y-2">
               <Label>Government ID</Label>
-              <Select value={formData.idType} onValueChange={(value) => setFormData({ ...formData, idType: value, idNumber: "" })}>
+              <Select
+                value={formData.idType}
+                onValueChange={(value) =>
+                  setFormData({ ...formData, idType: value, idNumber: "" })
+                }
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select ID type..." />
                 </SelectTrigger>
@@ -153,9 +256,15 @@ const SignUp = () => {
                   value={formData.idNumber}
                   onChange={(e) => {
                     let value = e.target.value.toUpperCase();
-                    if (formData.idType === "aadhar") value = value.replace(/\D/g, "").slice(0, 12);
-                    else if (formData.idType === "pan") value = value.slice(0, 10);
-                    else value = value.slice(0, 16);
+
+                    if (formData.idType === "aadhar") {
+                      value = value.replace(/\D/g, "").slice(0, 12);
+                    } else if (formData.idType === "pan") {
+                      value = value.slice(0, 10);
+                    } else {
+                      value = value.slice(0, 16);
+                    }
+
                     setFormData({ ...formData, idNumber: value });
                   }}
                   required
@@ -166,9 +275,26 @@ const SignUp = () => {
             <div className="space-y-2">
               <Label>Password</Label>
               <div className="relative">
-                <Input type={showPassword ? "text" : "password"} value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} required />
-                <Button type="button" variant="ghost" size="sm" className="absolute right-0 top-0 h-full px-3" onClick={() => setShowPassword(!showPassword)}>
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                <Input
+                  type={showPassword ? "text" : "password"}
+                  value={formData.password}
+                  onChange={(e) =>
+                    setFormData({ ...formData, password: e.target.value })
+                  }
+                  required
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-0 top-0 h-full px-3"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
                 </Button>
               </div>
             </div>
@@ -176,21 +302,51 @@ const SignUp = () => {
             <div className="space-y-2">
               <Label>Confirm Password</Label>
               <div className="relative">
-                <Input type={showConfirmPassword ? "text" : "password"} value={formData.confirmPassword} onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })} required />
-                <Button type="button" variant="ghost" size="sm" className="absolute right-0 top-0 h-full px-3" onClick={() => setShowConfirmPassword(!showConfirmPassword)}>
-                  {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                <Input
+                  type={showConfirmPassword ? "text" : "password"}
+                  value={formData.confirmPassword}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      confirmPassword: e.target.value,
+                    })
+                  }
+                  required
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-0 top-0 h-full px-3"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                >
+                  {showConfirmPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
                 </Button>
               </div>
             </div>
 
-            <Button type="submit" variant="gradient" className="w-full mt-6" disabled={loading}>
+            <Button
+              type="submit"
+              variant="gradient"
+              className="w-full mt-6"
+              disabled={loading}
+            >
               {loading ? "Creating account..." : "create account"}
             </Button>
           </form>
 
           <div className="text-center mt-6">
             <p className="text-muted-foreground">Already have an account?</p>
-            <Link to="/login" className="font-semibold text-foreground hover:text-primary">Sign in</Link>
+            <Link
+              to="/login"
+              className="font-semibold text-foreground hover:text-primary"
+            >
+              Sign in
+            </Link>
           </div>
         </CardContent>
       </Card>
