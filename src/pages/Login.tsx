@@ -11,7 +11,10 @@ import logo from "@/assets/jan-dristi-logo.png";
 const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState({ email: "", password: "" });
+  const [formData, setFormData] = useState({
+    email: "",
+    password: "",
+  });
 
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -20,17 +23,17 @@ const Login = () => {
     e.preventDefault();
     setLoading(true);
 
+    const emailName = formData.email.split("@")[0];
+
     localStorage.setItem("isLoggedIn", "true");
 
-    if (!localStorage.getItem("currentUser")) {
-      localStorage.setItem(
-        "currentUser",
-        JSON.stringify({
-          fullName: formData.email.split("@")[0],
-          email: formData.email,
-        })
-      );
-    }
+    localStorage.setItem(
+      "currentUser",
+      JSON.stringify({
+        fullName: emailName,
+        email: formData.email,
+      })
+    );
 
     toast({
       title: "Welcome back!",
@@ -47,9 +50,15 @@ const Login = () => {
         <CardContent className="p-8">
           <div className="text-center mb-8">
             <div className="w-20 h-20 mx-auto mb-4">
-              <img src={logo} alt="Jan Dristi" className="w-full h-full object-cover rounded-2xl" />
+              <img
+                src={logo}
+                alt="Jan Dristi"
+                className="w-full h-full object-cover rounded-2xl"
+              />
             </div>
-            <h1 className="text-3xl font-bold text-foreground mb-2">welcome back</h1>
+            <h1 className="text-3xl font-bold text-foreground mb-2">
+              welcome back
+            </h1>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -60,7 +69,9 @@ const Login = () => {
                 type="email"
                 placeholder="Enter your email..."
                 value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, email: e.target.value })
+                }
                 required
               />
             </div>
@@ -73,9 +84,12 @@ const Login = () => {
                   type={showPassword ? "text" : "password"}
                   placeholder="Enter your password..."
                   value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, password: e.target.value })
+                  }
                   required
                 />
+
                 <Button
                   type="button"
                   variant="ghost"
@@ -83,19 +97,31 @@ const Login = () => {
                   className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                   onClick={() => setShowPassword(!showPassword)}
                 >
-                  {showPassword ? <EyeOff className="h-4 w-4 text-muted-foreground" /> : <Eye className="h-4 w-4 text-muted-foreground" />}
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4 text-muted-foreground" />
+                  ) : (
+                    <Eye className="h-4 w-4 text-muted-foreground" />
+                  )}
                 </Button>
               </div>
             </div>
 
-            <Button type="submit" variant="gradient" className="w-full mt-6" disabled={loading}>
+            <Button
+              type="submit"
+              variant="gradient"
+              className="w-full mt-6"
+              disabled={loading}
+            >
               {loading ? "Signing in..." : "sign in"}
             </Button>
           </form>
 
           <div className="text-center mt-6">
             <p className="text-muted-foreground">Don't have account?</p>
-            <Link to="/signup" className="font-semibold text-foreground hover:text-primary">
+            <Link
+              to="/signup"
+              className="font-semibold text-foreground hover:text-primary"
+            >
               Create account
             </Link>
           </div>
