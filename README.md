@@ -22,6 +22,7 @@ Jan Dristi is a civic issue reporting web application where users can report loc
 - Tailwind CSS
 - ShadCN UI
 - LocalStorage for demo data
+- Database: Supabase PostgreSQL
 
 ## Project Setup
 
