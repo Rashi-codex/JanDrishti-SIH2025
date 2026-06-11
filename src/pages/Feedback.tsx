@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ArrowLeft, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import logo from "@/assets/jan-dristi-logo.png";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Issue {
   id: string;
@@ -21,37 +22,60 @@ const Feedback = () => {
   const [selectedRating, setSelectedRating] = useState<number | null>(null);
   const [feedbackText, setFeedbackText] = useState("");
   const [issue, setIssue] = useState<Issue | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const { toast } = useToast();
 
   useEffect(() => {
-    const savedIssues = localStorage.getItem("issues");
+    const loadIssue = async () => {
+      setLoading(true);
 
-    if (!savedIssues) {
-      setIssue(null);
-      return;
-    }
+      let query = supabase.from("issues").select("*");
 
-    const issues: Issue[] = JSON.parse(savedIssues);
+      if (issueId) {
+        query = query.eq("id", issueId);
+      } else {
+        query = query.order("created_at", { ascending: false }).limit(1);
+      }
 
-    if (issues.length === 0) {
-      setIssue(null);
-      return;
-    }
+      const { data, error } = await query;
 
-    if (issueId) {
-      const foundIssue = issues.find((item) => item.id === issueId);
-      setIssue(foundIssue || issues[0]);
-    } else {
-      setIssue(issues[0]);
-    }
+      if (error) {
+        console.error("Error loading issue:", error);
+        setIssue(null);
+        setLoading(false);
+        return;
+      }
+
+      const row : any = data?.[0];
+
+      if (!row) {
+        setIssue(null);
+        setLoading(false);
+        return;
+      }
+
+      setIssue({
+        id: row.id,
+        title:
+          row.description && row.description.length > 50
+            ? row.description.slice(0, 50) + "..."
+            : row.description || "Civic Issue",
+        reporter: row.reporter_name || "User",
+        status: (row.status || "submitted") as Issue["status"],
+      });
+
+      setLoading(false);
+    };
+
+    loadIssue();
   }, [issueId]);
 
   const handleRatingClick = (rating: number) => {
     setSelectedRating(rating);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (selectedRating === null) {
       toast({
         title: "Rating Required",
@@ -61,28 +85,49 @@ const Feedback = () => {
       return;
     }
 
-    const existingFeedback = JSON.parse(
-      localStorage.getItem("feedback") || "[]"
-    );
+    if (!issue) {
+      toast({
+        title: "Issue Missing",
+        description: "No issue found for feedback.",
+        variant: "destructive",
+      });
+      return;
+    }
 
-    const newFeedback = {
-      issueId: issue?.id,
+    const { error } = await supabase.from("feedback").insert({
+      issue_id: issue.id,
       rating: selectedRating,
       feedback: feedbackText,
-      date: new Date().toISOString(),
-    };
+    } as any);
 
-    existingFeedback.push(newFeedback);
-    localStorage.setItem("feedback", JSON.stringify(existingFeedback));
+    if (error) {
+      toast({
+        title: "Database Error",
+        description: error.message,
+        variant: "destructive",
+      });
+      return;
+    }
 
     toast({
       title: "Feedback Submitted",
-      description: "Thank you for your feedback! It helps us improve our services.",
+      description:
+        "Thank you for your feedback! It helps us improve our services.",
     });
 
     setSelectedRating(null);
     setFeedbackText("");
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50">
+        <div className="max-w-2xl mx-auto p-6">
+          <p className="text-muted-foreground">Loading feedback...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!issue) {
     return (
@@ -148,7 +193,8 @@ const Feedback = () => {
 
             <div className="text-center space-y-4">
               <h2 className="text-lg font-medium text-foreground">
-                What was the level of your satisfaction with the issue resolution?
+                What was the level of your satisfaction with the issue
+                resolution?
               </h2>
 
               <div className="flex flex-wrap justify-center gap-3">

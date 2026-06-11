@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -7,32 +7,45 @@ import bronzeBadge from "@/assets/bronze-badge.jpg";
 import silverBadge from "@/assets/silver-badge.jpg";
 import goldBadge from "@/assets/gold-badge.jpg";
 import logo from "@/assets/jan-dristi-logo.png";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Issue {
   id: string;
-  title: string;
+  title?: string;
   category: string;
-  status: "pending" | "resolved" | "active";
-  date: string;
+  status: "submitted" | "pending" | "under process" | "resolved" | "active";
+  date?: string;
 }
 
 const Badge = () => {
   const navigate = useNavigate();
 
-  const [currentUser] = useState({
-    fullName: "Demo User",
-    email: "demo@gmail.com",
-  });
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [issues, setIssues] = useState<Issue[]>([]);
 
-  const [issues] = useState<Issue[]>([
-    {
-      id: "1",
-      title: "Road issue reported",
-      category: "Roads & Traffic",
-      status: "resolved",
-      date: "2026-06-10",
-    },
-  ]);
+  useEffect(() => {
+    const loadBadgeData = async () => {
+      const user = localStorage.getItem("currentUser");
+      if (user) {
+        setCurrentUser(JSON.parse(user));
+      }
+
+      const { data, error } = await supabase
+        .from("issues")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        console.error("Error loading badge data:", error);
+        setIssues([]);
+        return;
+      }
+
+      setIssues((data || []) as any);
+    };
+
+    loadBadgeData();
+  }, []);
 
   const getUserStats = () => {
     const totalReports = issues.length;
@@ -196,7 +209,7 @@ const Badge = () => {
 
                 <div className="mt-4">
                   <p className="text-lg font-semibold text-foreground">
-                    {currentUser.fullName || currentUser.email}
+                    {currentUser?.fullName || currentUser?.email || "User"}
                   </p>
                 </div>
               </div>

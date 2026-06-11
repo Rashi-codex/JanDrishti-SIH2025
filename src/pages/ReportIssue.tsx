@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent } from "@/components/ui/card";
 import { ArrowLeft, MapPin, Camera } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-
+import { supabase } from "@/integrations/supabase/client";
 const ReportIssue = () => {
   const [formData, setFormData] = useState({
     photo: null as File | null,
@@ -88,8 +88,24 @@ const ReportIssue = () => {
       reporter: currentUser.fullName || currentUser.email || "User",
     };
 
-    const oldIssues = JSON.parse(localStorage.getItem("issues") || "[]");
-    localStorage.setItem("issues", JSON.stringify([newIssue, ...oldIssues]));
+  const { error } = await supabase.from("issues").insert({
+    reporter_name: newIssue.reporter,
+    category: newIssue.category,
+    description: newIssue.description,
+    local_address: newIssue.localAddress,
+    location: newIssue.location,
+    status: newIssue.status,
+  } as any);
+
+if (error) {
+  toast({
+    title: "Database Error",
+    description: error.message,
+    variant: "destructive",
+  });
+  setLoading(false);
+  return;
+}
 
     toast({ title: "Report Submitted Successfully", description: "Your issue has been saved." });
 
