@@ -118,6 +118,21 @@ const TrackIssues = () => {
     if (status === "under process") return "In Progress";
     return status.charAt(0).toUpperCase() + status.slice(1);
   };
+  const deleteIssue = async (issueId: string) => {
+    const confirmDelete = window.confirm(
+      "Are you sure you want to delete this issue? This action cannot be undone."
+    );
+    if (!confirmDelete) return;
+    const { error } = await (supabase as any)
+      .from("issues")
+      .delete()
+      .eq("id", issueId);
+    if (error) {
+      console.error("Error deleting issue:", error);
+      alert("Failed to delete the issue. Please try again.");
+    }
+    setIssues((prevIssues) => prevIssues.filter((issue) => issue.id !== issueId));
+  }
 
   const firstIssueId = filteredIssues.length > 0 ? filteredIssues[0].id : "";
 
@@ -289,6 +304,15 @@ const TrackIssues = () => {
                       </div>
                     </div>
                   )}
+                  <div className="mt-4 flex justify-end">
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => deleteIssue(issue.id)}
+                    >
+                      Delete Issue
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             ))

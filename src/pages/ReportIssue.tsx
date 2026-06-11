@@ -265,14 +265,24 @@ const ReportIssue = () => {
                       </Button>
                     </div>
                   ) : (
-                    <Button
-                      type="button"
-                      variant="blue"
-                      onClick={handleCameraCapture}
-                    >
-                      <Camera className="h-4 w-4 mr-2" />
-                      Take Photo
-                    </Button>
+                    <div className="flex gap-2 justify-center">
+                      <Button
+                        type="button"
+                        variant="blue"
+                        onClick={handleCameraCapture}
+                      >
+                        <Camera className="h-4 w-4 mr-2" />
+                        Take Photo
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="ml-2"
+                        onClick={() => fileInputRef.current?.click()}
+                      >
+                        Upload  File
+                      </Button>
+                    </div>
                   )}
 
                   <input
