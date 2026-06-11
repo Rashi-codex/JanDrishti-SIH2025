@@ -29,10 +29,16 @@ const Badge = () => {
       if (user) {
         setCurrentUser(JSON.parse(user));
       }
+      const currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}");
+      if (!currentUser.email) {
+        setIssues([]);
+        return;
+      }
 
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any )
         .from("issues")
         .select("*")
+        .eq("user_email",currentUser.email)
         .order("created_at", { ascending: false });
 
       if (error) {

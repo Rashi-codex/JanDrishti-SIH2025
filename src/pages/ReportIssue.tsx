@@ -87,9 +87,11 @@ const ReportIssue = () => {
       location: formData.location,
       reporter: currentUser.fullName || currentUser.email || "User",
     };
+  const currentUserEmail = currentUser.email || "";
 
   const { error } = await supabase.from("issues").insert({
     reporter_name: newIssue.reporter,
+    user_email: currentUserEmail,
     category: newIssue.category,
     description: newIssue.description,
     local_address: newIssue.localAddress,
